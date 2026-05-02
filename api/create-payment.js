@@ -1,13 +1,13 @@
 export default async function handler(req, res) {
   const shopId = "1242806";
-  const secretKey = "live_ZJsOSAOhQada3QvM7HBTNV_vE3SDLwnksLsdqhC6wr4"; // вставь свой ключ
+  const secretKey = "live_ZJsOSAOhQada3QvM7HBTNV_vE3SDLwnksLsdqhC6wr4"; // ← вставь свой ключ
 
   const { plan } = req.query;
 
   let amount = "990.00";
   let description = "Подписка";
 
-  // ТАРИФЫ
+  // тарифы
   if (plan === "pro") {
     amount = "1990.00";
     description = "Подписка PRO";
@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     capture: true,
     description: description,
 
-    // ОБЯЗАТЕЛЬНО ДЛЯ ЮКАССЫ
+    // обязательно для ЮKassa
     receipt: {
       customer: {
         email: "test@test.ru"
@@ -66,9 +66,11 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    res.status(200).json({
-      url: data.confirmation.confirmation_url
+    // ❗ ГЛАВНОЕ — редирект на оплату
+    res.writeHead(302, {
+      Location: data.confirmation.confirmation_url
     });
+    res.end();
 
   } catch (error) {
     res.status(500).json({

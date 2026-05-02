@@ -1,12 +1,28 @@
 export default async function handler(req, res) {
   const shopId = "1242806";
-  const secretKey = "live_ZJsOSAOhQada3QvM7HBTNV_vE3SDLwnksLsdqhC6wr4"; // вставь свой
+  const secretKey = "live_ZJsOSAOhQada3QvM7HBTNV_vE3SDLwnksLsdqhC6wr4"; // вставь свой ключ
+
+  const { plan } = req.query;
+
+  let amount = "990.00";
+  let description = "Подписка";
+
+  // ТАРИФЫ
+  if (plan === "pro") {
+    amount = "1990.00";
+    description = "Подписка PRO";
+  }
+
+  if (plan === "vip") {
+    amount = "4990.00";
+    description = "Подписка VIP";
+  }
 
   const auth = Buffer.from(`${shopId}:${secretKey}`).toString("base64");
 
   const body = {
     amount: {
-      value: "990.00",
+      value: amount,
       currency: "RUB"
     },
     confirmation: {
@@ -14,17 +30,19 @@ export default async function handler(req, res) {
       return_url: "https://art-g.art"
     },
     capture: true,
-    description: "Подписка",
+    description: description,
+
+    // ОБЯЗАТЕЛЬНО ДЛЯ ЮКАССЫ
     receipt: {
       customer: {
         email: "test@test.ru"
       },
       items: [
         {
-          description: "Подписка",
+          description: description,
           quantity: "1.00",
           amount: {
-            value: "990.00",
+            value: amount,
             currency: "RUB"
           },
           vat_code: 1,
@@ -48,11 +66,9 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    // 🔥 ВАЖНО — РЕДИРЕКТ
-    res.writeHead(302, {
-      Location: data.confirmation.confirmation_url
+    res.status(200).json({
+      url: data.confirmation.confirmation_url
     });
-    res.end();
 
   } catch (error) {
     res.status(500).json({

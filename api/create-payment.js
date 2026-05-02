@@ -30,9 +30,14 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
+    if (!data.confirmation) {
+      return res.status(400).json(data);
+    }
+
     res.status(200).json({
       url: data.confirmation.confirmation_url,
     });
+
   } catch (error) {
     res.status(500).json({
       error: error.message,

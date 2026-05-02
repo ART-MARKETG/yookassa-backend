@@ -15,6 +15,23 @@ export default async function handler(req, res) {
     },
     capture: true,
     description: "Подписка",
+
+    receipt: {
+      customer: {
+        email: "test@example.com"
+      },
+      items: [
+        {
+          description: "Подписка",
+          quantity: "1.00",
+          amount: {
+            value: "990.00",
+            currency: "RUB"
+          },
+          vat_code: 1
+        }
+      ]
+    }
   };
 
   try {

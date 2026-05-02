@@ -6,10 +6,6 @@ export default async function handler(req, res) {
   const shopId = process.env.YOOKASSA_SHOP_ID;
   const secretKey = process.env.YOOKASSA_SECRET_KEY;
 
-  if (!shopId || !secretKey) {
-    return res.status(500).json({ error: 'Missing YooKassa credentials' });
-  }
-
   try {
     const { amount, userId } = req.body;
 
@@ -17,7 +13,7 @@ export default async function handler(req, res) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Idempotence-Key': Math.random().toString(36).substring(2),
+        'Idempotence-Key': Math.random().toString(36),
         'Authorization': 'Basic ' + Buffer.from(`${shopId}:${secretKey}`).toString('base64')
       },
       body: JSON.stringify({
@@ -30,7 +26,8 @@ export default async function handler(req, res) {
           return_url: 'https://your-site.com/success'
         },
         capture: true,
-        description: 'Оплата доступа',
+        description: 'Подписка',
+        save_payment_method: true, // 🔥 ВАЖНО
         metadata: {
           user_id: userId
         }

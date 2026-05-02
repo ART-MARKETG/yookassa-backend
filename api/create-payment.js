@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     },
     confirmation: {
       type: "redirect",
-      return_url: "https://art-g.art"
+      return_url: "https://yookassa-backend.vercel.app"
     },
     capture: true,
     description: "Подписка"

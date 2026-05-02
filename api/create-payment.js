@@ -7,29 +7,35 @@ export default async function handler(req, res) {
   const body = {
     amount: {
       value: "990.00",
-      currency: "RUB"
+      currency: "RUB",
     },
     confirmation: {
       type: "redirect",
-      return_url: "https://yookassa-backend.vercel.app"
+      return_url: "https://yookassa-backend.vercel.app",
     },
     capture: true,
-    description: "Подписка"
+    description: "Подписка",
   };
 
-  const response = await fetch("https://api.yookassa.ru/v3/payments", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Basic ${auth}`,
-      "Idempotence-Key": Date.now().toString()
-    },
-    body: JSON.stringify(body)
-  });
+  try {
+    const response = await fetch("https://api.yookassa.ru/v3/payments", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Basic ${auth}`,
+        "Idempotence-Key": Date.now().toString(),
+      },
+      body: JSON.stringify(body),
+    });
 
-  const data = await response.json();
+    const data = await response.json();
 
-  res.status(200).json({
-    url: data.confirmation.confirmation_url
-  });
+    res.status(200).json({
+      url: data.confirmation.confirmation_url,
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: error.message,
+    });
+  }
 }

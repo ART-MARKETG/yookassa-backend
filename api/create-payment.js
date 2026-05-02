@@ -1,6 +1,6 @@
 export default async function handler(req, res) {
   const shopId = "1242806";
-  const secretKey = "live_KyQoKe1MsO8OL6CznzxvkADQETdwJ34OPZOvBJ4yp4E";
+  const secretKey = "live_ZJsOSAOhQada3QvM7HBTNV_vE3SDLwnksLsdqhC6wr4";
 
   const auth = Buffer.from(`${shopId}:${secretKey}`).toString("base64");
 

@@ -1,83 +1,50 @@
 export default async function handler(req, res) {
-  const shopId = "1242806";
-  const secretKey = "live_ZJsOSAOhQada3QvM7HBTNV_vE3SDLwnksLsdqhC6wr4"; // ← вставь свой ключ
-
-  const { plan } = req.query;
-
-  let amount = "990.00";
-  let description = "Подписка";
-
-  // тарифы
-  if (plan === "pro") {
-    amount = "1990.00";
-    description = "Подписка PRO";
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  if (plan === "vip") {
-    amount = "4990.00";
-    description = "Подписка VIP";
+  const shopId = process.env.YOOKASSA_SHOP_ID;
+  const secretKey = process.env.YOOKASSA_SECRET_KEY;
+
+  if (!shopId || !secretKey) {
+    return res.status(500).json({ error: 'Missing YooKassa credentials' });
   }
-
-  const auth = Buffer.from(`${shopId}:${secretKey}`).toString("base64");
-
-  const body = {
-    amount: {
-      value: amount,
-      currency: "RUB"
-    },
-    confirmation: {
-      type: "redirect",
-      return_url: "https://art-g.art"
-    },
-
-    // 🔥 ВКЛЮЧАЕМ СОХРАНЕНИЕ КАРТЫ
-    save_payment_method: true,
-
-    capture: true,
-    description: description,
-
-    receipt: {
-      customer: {
-        email: "test@test.ru"
-      },
-      items: [
-        {
-          description: description,
-          quantity: "1.00",
-          amount: {
-            value: amount,
-            currency: "RUB"
-          },
-          vat_code: 1,
-          payment_mode: "full_prepayment",
-          payment_subject: "service"
-        }
-      ]
-    }
-  };
 
   try {
-    const response = await fetch("https://api.yookassa.ru/v3/payments", {
-      method: "POST",
+    const { amount, userId } = req.body;
+
+    const response = await fetch('https://api.yookassa.ru/v3/payments', {
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Basic ${auth}`,
-        "Idempotence-Key": Date.now().toString()
+        'Content-Type': 'application/json',
+        'Idempotence-Key': Math.random().toString(36).substring(2),
+        'Authorization': 'Basic ' + Buffer.from(`${shopId}:${secretKey}`).toString('base64')
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify({
+        amount: {
+          value: amount,
+          currency: 'RUB'
+        },
+        confirmation: {
+          type: 'redirect',
+          return_url: 'https://your-site.com/success'
+        },
+        capture: true,
+        description: 'Оплата доступа',
+        metadata: {
+          user_id: userId
+        }
+      })
     });
 
     const data = await response.json();
 
-    // 🔥 РЕДИРЕКТ НА ОПЛАТУ
-    res.writeHead(302, {
-      Location: data.confirmation.confirmation_url
+    return res.status(200).json({
+      confirmation_url: data.confirmation.confirmation_url
     });
-    res.end();
 
   } catch (error) {
-    res.status(500).json({
-      error: error.message
-    });
+    console.error(error);
+    return res.status(500).json({ error: 'Payment creation failed' });
   }
 }

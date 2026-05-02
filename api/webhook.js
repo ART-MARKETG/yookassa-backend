@@ -1,36 +1,40 @@
 export default async function handler(req, res) {
-  // Проверяем метод
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(405).end();
   }
 
   try {
     const event = req.body;
 
-    // Лог всего события (на всякий случай)
-    console.log("=== WEBHOOK EVENT ===");
-    console.log(JSON.stringify(event, null, 2));
+    console.log("Webhook пришёл:", JSON.stringify(event, null, 2));
 
-    const payment = event.object;
+    if (event.event === "payment.succeeded") {
+      const payment = event.object;
 
-    // Основная информация о платеже
-    console.log("=== ПЛАТЕЖ ===");
-    console.log("PAYMENT ID:", payment?.id);
-    console.log("STATUS:", payment?.status);
-    console.log("AMOUNT:", payment?.amount?.value);
+      const paymentId = payment.id;
+      const paymentMethodId = payment.payment_method.id;
 
-    // 🔥 САМОЕ ВАЖНОЕ
-    console.log("=== СПОСОБ ОПЛАТЫ ===");
-    console.log("PAYMENT METHOD ID:", payment?.payment_method?.id);
+      const userId = payment.metadata?.user_id;
+      const email = payment.metadata?.email;
+      const plan = payment.metadata?.plan;
 
-    // Дополнительно (полезно)
-    console.log("PAID:", payment?.paid);
-    console.log("CREATED AT:", payment?.created_at);
+      const amount = payment.amount.value;
+      const currency = payment.amount.currency;
 
-    return res.status(200).json({ received: true });
+      console.log("====== ОПЛАТА ======");
+      console.log("USER ID:", userId);
+      console.log("EMAIL:", email);
+      console.log("PLAN:", plan);
 
-  } catch (error) {
-    console.error("❌ Ошибка webhook:", error);
-    return res.status(500).json({ error: "Webhook error" });
+      console.log("PAYMENT ID:", paymentId);
+      console.log("PAYMENT METHOD ID:", paymentMethodId);
+      console.log("AMOUNT:", amount, currency);
+    }
+
+    res.status(200).end();
+
+  } catch (e) {
+    console.error("WEBHOOK ERROR:", e);
+    res.status(500).end();
   }
 }

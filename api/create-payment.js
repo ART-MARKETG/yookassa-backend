@@ -29,10 +29,13 @@ export default async function handler(req, res) {
       type: "redirect",
       return_url: "https://art-g.art"
     },
+
+    // 🔥 ВКЛЮЧАЕМ СОХРАНЕНИЕ КАРТЫ
+    save_payment_method: true,
+
     capture: true,
     description: description,
 
-    // обязательно для ЮKassa
     receipt: {
       customer: {
         email: "test@test.ru"
@@ -66,7 +69,7 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    // ❗ ГЛАВНОЕ — редирект на оплату
+    // 🔥 РЕДИРЕКТ НА ОПЛАТУ
     res.writeHead(302, {
       Location: data.confirmation.confirmation_url
     });

@@ -28,7 +28,9 @@ export default async function handler(req, res) {
             value: "990.00",
             currency: "RUB"
           },
-          vat_code: 1
+          vat_code: 1,
+          payment_subject: "service",
+          payment_mode: "full_payment"
         }
       ]
     }
@@ -47,10 +49,12 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
+    // если ЮKassa вернула ошибку — покажем её
     if (!data.confirmation) {
       return res.status(400).json(data);
     }
 
+    // если всё ок — вернём ссылку оплаты
     res.status(200).json({
       url: data.confirmation.confirmation_url,
     });

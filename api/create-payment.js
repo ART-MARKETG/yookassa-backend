@@ -1,54 +1,50 @@
-import fetch from "node-fetch";
-
 export default async function handler(req, res) {
+  console.log("METHOD:", req.method);
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const { email, plan, amount } = req.body;
+    const { plan, email, amount } = req.body;
 
-    if (!email) {
-      return res.status(400).json({ error: "Email required" });
-    }
+    console.log("DATA:", plan, email, amount);
 
     const response = await fetch("https://api.yookassa.ru/v3/payments", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Idempotence-Key": Date.now().toString(),
+        "Idempotence-Key": Math.random().toString(),
         "Authorization": "Basic " + Buffer.from(
-          process.env.SHOP_ID + ":" + process.env.SECRET_KEY
-        ).toString("base64"),
+          process.env.YOOKASSA_SHOP_ID + ":" + process.env.YOOKASSA_SECRET_KEY
+        ).toString("base64")
       },
       body: JSON.stringify({
         amount: {
           value: amount,
           currency: "RUB"
         },
-        capture: true,
         confirmation: {
           type: "redirect",
           return_url: "https://art-g.art"
         },
-        description: "Подписка " + plan,
+        capture: true,
+        description: `Подписка ${plan} (${email})`,
 
-        // 🔥 минимальный валидный чек (без лишнего мусора)
         receipt: {
           customer: {
             email: email
           },
           items: [
             {
-              description: "Подписка " + plan,
+              description: `Подписка ${plan}`,
               quantity: "1.00",
               amount: {
                 value: amount,
                 currency: "RUB"
               },
               vat_code: 1,
-              payment_mode: "full_payment",
+              payment_mode: "full_prepayment",
               payment_subject: "service"
             }
           ]
@@ -58,18 +54,18 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    console.log("RESPONSE:", data);
+    console.log("YooKassa:", data);
 
-    if (!data.confirmation) {
-      return res.status(500).json(data);
+    if (data.confirmation && data.confirmation.confirmation_url) {
+      return res.status(200).json({
+        confirmation_url: data.confirmation.confirmation_url
+      });
+    } else {
+      return res.status(400).json(data);
     }
-
-    return res.status(200).json({
-      confirmation_url: data.confirmation.confirmation_url
-    });
 
   } catch (error) {
     console.error("ERROR:", error);
-    return res.status(500).json({ error: "server error" });
+    return res.status(500).json({ error: error.message });
   }
 }

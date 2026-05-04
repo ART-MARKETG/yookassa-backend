@@ -1,10 +1,8 @@
 export default async function handler(req, res) {
   try {
-    // 🔥 РАЗРЕШАЕМ GET (ВАЖНО)
     const { plan } = req.query;
 
     let amount = "990.00";
-
     if (plan === "pro") amount = "1990.00";
     if (plan === "vip") amount = "4990.00";
 
@@ -27,13 +25,31 @@ export default async function handler(req, res) {
           type: "redirect",
           return_url: "https://art-g.art"
         },
-        description: `Подписка ${plan}`
+        description: `Подписка ${plan}`,
+
+        // 🔥 ВОТ ЭТО ГЛАВНОЕ
+        receipt: {
+          customer: {
+            email: "test@mail.com"
+          },
+          items: [
+            {
+              description: `Подписка ${plan}`,
+              quantity: "1.00",
+              amount: {
+                value: amount,
+                currency: "RUB"
+              },
+              vat_code: 1
+            }
+          ]
+        }
+
       })
     });
 
     const data = await response.json();
 
-    // 🔥 ВАЖНО — ПРОВЕРКА ОШИБКИ
     if (!data.confirmation) {
       console.log("YOOKASSA ERROR:", data);
       return res.status(500).json({ error: "Ошибка ЮKassa", data });

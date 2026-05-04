@@ -27,7 +27,6 @@ export default async function handler(req, res) {
         },
         description: `Подписка ${plan}`,
 
-        // 🔥 ВОТ ЭТО ГЛАВНОЕ
         receipt: {
           customer: {
             email: "test@mail.com"
@@ -40,7 +39,11 @@ export default async function handler(req, res) {
                 value: amount,
                 currency: "RUB"
               },
-              vat_code: 1
+              vat_code: 1,
+
+              // 🔥 ВОТ ЭТО ДОБАВИЛИ
+              payment_subject: "service",
+              payment_mode: "full_prepayment"
             }
           ]
         }

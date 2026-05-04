@@ -1,6 +1,6 @@
 export default async function handler(req, res) {
   try {
-    // ✅ получаем данные из URL
+    // ✅ получаем параметры из URL
     const { plan, amount, email } = req.query;
 
     console.log("PLAN:", plan);
@@ -11,7 +11,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Email is required" });
     }
 
-    // ✅ ключи из Vercel
+    // ✅ ключи
     const shopId = process.env.YOOKASSA_SHOP_ID;
     const secretKey = process.env.YOOKASSA_SECRET_KEY;
 
@@ -21,9 +21,10 @@ export default async function handler(req, res) {
 
     const auth = Buffer.from(`${shopId}:${secretKey}`).toString("base64");
 
-    // ✅ нормальная цена
+    // ✅ нормализация суммы
     const finalAmount = parseFloat(amount || "10").toFixed(2);
 
+    // ✅ тело платежа
     const paymentData = {
       amount: {
         value: finalAmount,
@@ -42,7 +43,7 @@ export default async function handler(req, res) {
         plan: plan
       },
 
-      // 🔥 ОБЯЗАТЕЛЬНО для РФ (иначе у тебя уже была ошибка receipt)
+      // 🔥 чек (обязателен)
       receipt: {
         customer: {
           email: email
@@ -55,13 +56,17 @@ export default async function handler(req, res) {
               value: finalAmount,
               currency: "RUB"
             },
-            vat_code: 1
+            vat_code: 1,
+
+            // 🔥 ВАЖНО — фикс твоей ошибки
+            payment_subject: "service",
+            payment_mode: "full_payment"
           }
         ]
       }
     };
 
-    // ✅ запрос в YooKassa (fetch встроенный, импорт не нужен)
+    // ✅ запрос в YooKassa (fetch встроен)
     const response = await fetch("https://api.yookassa.ru/v3/payments", {
       method: "POST",
       headers: {
@@ -82,7 +87,7 @@ export default async function handler(req, res) {
 
     console.log("SUCCESS PAYMENT FOR:", email);
 
-    // 👉 редирект на оплату
+    // ✅ редирект на оплату
     return res.redirect(data.confirmation.confirmation_url);
 
   } catch (error) {

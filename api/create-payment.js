@@ -1,5 +1,13 @@
 export default async function handler(req, res) {
-  console.log("METHOD:", req.method);
+
+  // ✅ CORS (фикс Load failed)
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -8,7 +16,7 @@ export default async function handler(req, res) {
   try {
     const { plan, email, amount } = req.body;
 
-    console.log("DATA:", plan, email, amount);
+    console.log("REQUEST:", { plan, email, amount });
 
     const response = await fetch("https://api.yookassa.ru/v3/payments", {
       method: "POST",
@@ -54,15 +62,15 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    console.log("YooKassa:", data);
+    console.log("YOO RESPONSE:", data);
 
     if (data.confirmation && data.confirmation.confirmation_url) {
       return res.status(200).json({
         confirmation_url: data.confirmation.confirmation_url
       });
-    } else {
-      return res.status(400).json(data);
     }
+
+    return res.status(400).json(data);
 
   } catch (error) {
     console.error("ERROR:", error);

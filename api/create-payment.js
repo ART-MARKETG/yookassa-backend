@@ -1,11 +1,6 @@
 export default async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
   try {
-    const plan = req.query.plan;
-    const email = req.query.email || "unknown";
+    const { plan, email } = req.query;
 
     let amount = "990.00";
 
@@ -16,7 +11,6 @@ export default async function handler(req, res) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Idempotence-Key": Date.now().toString(),
         "Authorization":
           "Basic " +
           Buffer.from(
@@ -24,28 +18,28 @@ export default async function handler(req, res) {
               ":" +
               process.env.YOOKASSA_SECRET_KEY
           ).toString("base64"),
+        "Idempotence-Key": Math.random().toString(),
       },
       body: JSON.stringify({
         amount: {
           value: amount,
           currency: "RUB",
         },
-        capture: true,
         confirmation: {
           type: "redirect",
           return_url: "https://art-g.art",
         },
+        capture: true,
         description: `Подписка (${plan})`,
-
-        // 🔥 ВОТ СЮДА МЫ ДОБАВИЛИ metadata
+        
+        // 🔥 ВОТ ЭТО ГЛАВНОЕ
         metadata: {
-          email: email,
-          plan: plan
+          email: email || "unknown",
         },
 
         receipt: {
           customer: {
-            email: email,
+            email: email || "test@mail.com",
           },
           items: [
             {
@@ -56,7 +50,7 @@ export default async function handler(req, res) {
                 currency: "RUB",
               },
               vat_code: 1,
-              payment_mode: "full_prepayment",
+              payment_mode: "full_payment",
               payment_subject: "service",
             },
           ],
@@ -66,21 +60,12 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    if (!data.confirmation) {
-      console.log("YOOKASSA ERROR:", data);
-      return res.status(500).json({
-        error: "Ошибка ЮKassa",
-        data,
-      });
+    if (data.confirmation) {
+      return res.redirect(302, data.confirmation.confirmation_url);
     }
 
-    return res.redirect(data.confirmation.confirmation_url);
-
-  } catch (error) {
-    console.log("SERVER ERROR:", error);
-    return res.status(500).json({
-      error: "Ошибка сервера",
-      details: error.message,
-    });
+    return res.status(400).json(data);
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
   }
 }

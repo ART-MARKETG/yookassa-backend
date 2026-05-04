@@ -1,10 +1,6 @@
-import fetch from "node-fetch";
-
 export default async function handler(req, res) {
-
   try {
-
-    // ✅ получаем параметры из URL
+    // ✅ получаем данные из URL
     const { plan, amount, email } = req.query;
 
     console.log("PLAN:", plan);
@@ -15,14 +11,22 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Email is required" });
     }
 
+    // ✅ ключи из Vercel
     const shopId = process.env.YOOKASSA_SHOP_ID;
     const secretKey = process.env.YOOKASSA_SECRET_KEY;
 
+    if (!shopId || !secretKey) {
+      return res.status(500).json({ error: "Missing YooKassa credentials" });
+    }
+
     const auth = Buffer.from(`${shopId}:${secretKey}`).toString("base64");
+
+    // ✅ нормальная цена
+    const finalAmount = parseFloat(amount || "10").toFixed(2);
 
     const paymentData = {
       amount: {
-        value: amount || "10.00",
+        value: finalAmount,
         currency: "RUB"
       },
       capture: true,
@@ -31,12 +35,14 @@ export default async function handler(req, res) {
         return_url: "https://art-g.art/"
       },
       description: `Подписка (${plan})`,
+
+      // 🔥 сохраняем email
       metadata: {
         email: email,
         plan: plan
       },
 
-      // ✅ ВАЖНО: чек (иначе у тебя была ошибка receipt)
+      // 🔥 ОБЯЗАТЕЛЬНО для РФ (иначе у тебя уже была ошибка receipt)
       receipt: {
         customer: {
           email: email
@@ -46,7 +52,7 @@ export default async function handler(req, res) {
             description: `Подписка ${plan}`,
             quantity: "1.00",
             amount: {
-              value: amount || "10.00",
+              value: finalAmount,
               currency: "RUB"
             },
             vat_code: 1
@@ -55,29 +61,32 @@ export default async function handler(req, res) {
       }
     };
 
+    // ✅ запрос в YooKassa (fetch встроенный, импорт не нужен)
     const response = await fetch("https://api.yookassa.ru/v3/payments", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Basic ${auth}`,
-        "Idempotence-Key": Math.random().toString(36).substring(7)
+        "Idempotence-Key": Date.now().toString()
       },
       body: JSON.stringify(paymentData)
     });
 
     const data = await response.json();
 
+    console.log("YOOKASSA RESPONSE:", data);
+
     if (!data.confirmation) {
-      console.log("ERROR RESPONSE:", data);
       return res.status(500).json(data);
     }
 
-    console.log("PAYMENT CREATED FOR:", email);
+    console.log("SUCCESS PAYMENT FOR:", email);
 
+    // 👉 редирект на оплату
     return res.redirect(data.confirmation.confirmation_url);
 
   } catch (error) {
-    console.error("ERROR:", error);
+    console.error("CRASH ERROR:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 }

@@ -34,7 +34,7 @@ export default async function handler(req, res) {
         },
         description: "Подписка " + plan,
 
-        // 🔥 РАБОЧИЙ receipt
+        // 🔥 минимальный валидный чек (без лишнего мусора)
         receipt: {
           customer: {
             email: email
@@ -58,8 +58,7 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    console.log("EMAIL:", email);
-    console.log("YOOKASSA:", data);
+    console.log("RESPONSE:", data);
 
     if (!data.confirmation) {
       return res.status(500).json(data);
@@ -70,7 +69,7 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error("SERVER ERROR:", error);
+    console.error("ERROR:", error);
     return res.status(500).json({ error: "server error" });
   }
 }

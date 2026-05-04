@@ -32,22 +32,39 @@ export default async function handler(req, res) {
         capture: true,
         description: `Подписка (${plan})`,
 
-        // ✅ сохраняем email
         metadata: {
           email: email || "unknown",
+        },
+
+        // ✅ ПРАВИЛЬНЫЙ ЧЕК
+        receipt: {
+          customer: {
+            email: email || "test@mail.com",
+          },
+          items: [
+            {
+              description: `Подписка (${plan})`,
+              quantity: "1.00",
+              amount: {
+                value: amount,
+                currency: "RUB",
+              },
+              vat_code: 1,
+              payment_mode: "full_payment",
+              payment_subject: "service"
+            },
+          ],
         },
       }),
     });
 
     const data = await response.json();
 
-    // логируем ошибку если есть
     if (!data.confirmation) {
       console.log("YOOKASSA ERROR:", data);
       return res.status(400).json(data);
     }
 
-    // редирект на оплату
     return res.redirect(302, data.confirmation.confirmation_url);
   } catch (error) {
     console.log("SERVER ERROR:", error);

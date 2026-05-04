@@ -1,20 +1,36 @@
 export default async function handler(req, res) {
+
+  // ✅ CORS (КРИТИЧНО)
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const shopId = process.env.YOOKASSA_SHOP_ID;
-  const secretKey = process.env.YOOKASSA_SECRET_KEY;
-
   try {
-    const { amount, userId } = req.body;
+    const { plan } = req.body;
+
+    let amount = '990.00';
+
+    if (plan === 'pro') amount = '1990.00';
+    if (plan === 'vip') amount = '4990.00';
+
+    const auth = Buffer.from(
+      `${process.env.YOOKASSA_SHOP_ID}:${process.env.YOOKASSA_SECRET_KEY}`
+    ).toString('base64');
 
     const response = await fetch('https://api.yookassa.ru/v3/payments', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Idempotence-Key': Math.random().toString(36),
-        'Authorization': 'Basic ' + Buffer.from(`${shopId}:${secretKey}`).toString('base64')
+        'Authorization': `Basic ${auth}`,
+        'Idempotence-Key': Math.random().toString()
       },
       body: JSON.stringify({
         amount: {
@@ -23,14 +39,10 @@ export default async function handler(req, res) {
         },
         confirmation: {
           type: 'redirect',
-          return_url: 'https://your-site.com/success'
+          return_url: 'https://art-g.art'
         },
         capture: true,
-        description: 'Подписка',
-        save_payment_method: true, // 🔥 ВАЖНО
-        metadata: {
-          user_id: userId
-        }
+        description: `Подписка ${plan}`
       })
     });
 
@@ -42,6 +54,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ error: 'Payment creation failed' });
+    return res.status(500).json({ error: 'server error' });
   }
 }

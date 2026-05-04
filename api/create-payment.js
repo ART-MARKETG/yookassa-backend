@@ -11,7 +11,7 @@ export default async function handler(req, res) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization":
+        Authorization:
           "Basic " +
           Buffer.from(
             process.env.YOOKASSA_SHOP_ID +
@@ -31,41 +31,26 @@ export default async function handler(req, res) {
         },
         capture: true,
         description: `Подписка (${plan})`,
-        
-        // 🔥 ВОТ ЭТО ГЛАВНОЕ
+
+        // ✅ сохраняем email
         metadata: {
           email: email || "unknown",
-        },
-
-        receipt: {
-          customer: {
-            email: email || "test@mail.com",
-          },
-          items: [
-            {
-              description: `Подписка (${plan})`,
-              quantity: "1.00",
-              amount: {
-                value: amount,
-                currency: "RUB",
-              },
-              vat_code: 1,
-              payment_mode: "full_payment",
-              payment_subject: "service",
-            },
-          ],
         },
       }),
     });
 
     const data = await response.json();
 
-    if (data.confirmation) {
-      return res.redirect(302, data.confirmation.confirmation_url);
+    // логируем ошибку если есть
+    if (!data.confirmation) {
+      console.log("YOOKASSA ERROR:", data);
+      return res.status(400).json(data);
     }
 
-    return res.status(400).json(data);
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
+    // редирект на оплату
+    return res.redirect(302, data.confirmation.confirmation_url);
+  } catch (error) {
+    console.log("SERVER ERROR:", error);
+    return res.status(500).json({ error: error.message });
   }
 }

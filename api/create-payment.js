@@ -2,7 +2,7 @@ export default async function handler(req, res) {
   try {
     const { plan, email } = req.query;
 
-    let amount = "990.00";
+    let amount = "10.00";
 
     if (plan === "pro") amount = "1990.00";
     if (plan === "vip") amount = "4990.00";

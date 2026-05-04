@@ -1,31 +1,33 @@
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).end();
-  }
-
   try {
-    const event = req.body.event;
-    const payment = req.body.object;
+    const body = req.body;
 
-    if (event === 'payment.succeeded') {
+    // 👉 проверяем что это успешная оплата
+    if (body.event === 'payment.succeeded') {
+      const payment = body.object;
 
-      const userId = payment.metadata.user_id;
-      const paymentMethodId = payment.payment_method?.id;
+      const status = payment.status;
+      const paymentId = payment.id;
+      const paymentMethodId = payment.payment_method.id;
 
-      console.log('Оплата успешна');
-      console.log('User:', userId);
-      console.log('PaymentMethod:', paymentMethodId);
+      // если ты добавишь email позже
+      const userId = payment.metadata?.userId || 'unknown';
 
-      // 🔥 СЮДА ТЫ ПОТОМ ПОДКЛЮЧИШЬ БАЗУ
-      // пример:
-      // await savePaymentMethod(userId, paymentMethodId);
+      // 🔥 ЛОГИ — ЭТО САМОЕ ВАЖНОЕ СЕЙЧАС
+      console.log('======================');
+      console.log('STATUS:', status);
+      console.log('PAYMENT ID:', paymentId);
+      console.log('PAYMENT METHOD ID:', paymentMethodId);
+      console.log('USER:', userId);
+      console.log('======================');
 
+      // 👉 тут потом будем сохранять в таблицу
     }
 
-    res.status(200).end();
+    res.status(200).send('ok');
 
-  } catch (err) {
-    console.error(err);
-    res.status(500).end();
+  } catch (error) {
+    console.error('WEBHOOK ERROR:', error);
+    res.status(500).send('error');
   }
 }

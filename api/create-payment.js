@@ -36,6 +36,13 @@ export default async function handler(req, res) {
           return_url: "https://art-g.art",
         },
         description: `Подписка (${plan})`,
+
+        // 🔥 ВОТ СЮДА МЫ ДОБАВИЛИ metadata
+        metadata: {
+          email: email,
+          plan: plan
+        },
+
         receipt: {
           customer: {
             email: email,
@@ -60,6 +67,7 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     if (!data.confirmation) {
+      console.log("YOOKASSA ERROR:", data);
       return res.status(500).json({
         error: "Ошибка ЮKassa",
         data,
@@ -67,7 +75,9 @@ export default async function handler(req, res) {
     }
 
     return res.redirect(data.confirmation.confirmation_url);
+
   } catch (error) {
+    console.log("SERVER ERROR:", error);
     return res.status(500).json({
       error: "Ошибка сервера",
       details: error.message,

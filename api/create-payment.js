@@ -9,8 +9,6 @@ export default async function handler(req, res) {
   try {
     const { email, plan, amount } = req.body;
 
-    console.log("REQUEST BODY:", req.body);
-
     if (!email) {
       return res.status(400).json({ error: "Email required" });
     }
@@ -36,6 +34,7 @@ export default async function handler(req, res) {
         },
         description: "Подписка " + plan,
 
+        // 🔥 РАБОЧИЙ receipt
         receipt: {
           customer: {
             email: email
@@ -48,8 +47,6 @@ export default async function handler(req, res) {
                 value: amount,
                 currency: "RUB"
               },
-
-              // 🔥 КЛЮЧЕВОЕ
               vat_code: 1,
               payment_mode: "full_payment",
               payment_subject: "service"
@@ -61,7 +58,8 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    console.log("YOOKASSA RESPONSE:", data);
+    console.log("EMAIL:", email);
+    console.log("YOOKASSA:", data);
 
     if (!data.confirmation) {
       return res.status(500).json(data);

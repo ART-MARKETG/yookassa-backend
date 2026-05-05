@@ -1,31 +1,52 @@
+import { google } from "googleapis";
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(405).end();
   }
 
   try {
-    const body = req.body;
+    const event = req.body;
 
-    if (body.event === "payment.succeeded") {
-      const payment = body.object;
+    // 👉 проверяем успешную оплату
+    if (event.event === "payment.succeeded") {
+      const payment = event.object;
 
+      const email = payment.metadata?.email || "no-email";
+      const amount = payment.amount?.value || "0";
       const paymentId = payment.id;
-      const status = payment.status;
-      const paymentMethodId = payment.payment_method.id;
 
-      const email =
-        payment?.receipt?.customer?.email || "unknown";
+      // === Google Sheets ===
+      const auth = new google.auth.GoogleAuth({
+        credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
+        scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+      });
 
-      console.log("=================================");
-      console.log("STATUS:", status);
-      console.log("PAYMENT ID:", paymentId);
-      console.log("PAYMENT METHOD ID:", paymentMethodId);
-      console.log("USER:", email);
-      console.log("=================================");
+      const sheets = google.sheets({ version: "v4", auth });
+
+      const spreadsheetId = "19FGqv8Zm2P5aFE3VCHGmp_l7hQIsmWzWc-Ao-BybFg";
+
+      await sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: "Лист1!A:D",
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+          values: [
+            [
+              new Date().toISOString(),
+              email,
+              amount,
+              paymentId,
+            ],
+          ],
+        },
+      });
     }
 
-    res.status(200).json({ received: true });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+    return res.status(200).json({ status: "ok" });
+
+  } catch (error) {
+    console.error("WEBHOOK ERROR:", error);
+    return res.status(500).json({ error: "Webhook failed" });
   }
 }

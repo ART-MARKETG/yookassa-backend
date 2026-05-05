@@ -1,6 +1,60 @@
-export default async function handler(req, res) {
+import axios from "axios";
+import { google } from "googleapis";
 
-  // ✅ CORS (фикс Load failed)
+// === Google Sheets ===
+async function getSheetData() {
+  const auth = new google.auth.GoogleAuth({
+    credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
+    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+  });
+
+  const sheets = google.sheets({ version: "v4", auth });
+
+  const spreadsheetId = "19FGqv8Zm2P5aFE3VCHGmp_l7hQIsmWzWc-Ao-BybFg";
+
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: "Лист1!A:F",
+  });
+
+  return response.data.values;
+}
+
+// === YooKassa ===
+async function createPayment(amount, email) {
+  const shopId = process.env.YOOKASSA_SHOP_ID;
+  const secretKey = process.env.YOOKASSA_SECRET_KEY;
+
+  const auth = Buffer.from(`${shopId}:${secretKey}`).toString("base64");
+
+  const response = await axios.post(
+    "https://api.yookassa.ru/v3/payments",
+    {
+      amount: {
+        value: amount,
+        currency: "RUB",
+      },
+      confirmation: {
+        type: "redirect",
+        return_url: "https://your-site.com",
+      },
+      capture: true,
+      description: `Подписка для ${email}`,
+    },
+    {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Basic ${auth}`,
+      },
+    }
+  );
+
+  return response.data;
+}
+
+// === Handler ===
+export default async function handler(req, res) {
+  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -14,66 +68,43 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { plan, email, amount } = req.body;
+    // 1. Получаем данные из таблицы
+    const data = await getSheetData();
 
-    console.log("REQUEST:", { plan, email, amount });
+    // 2. Убираем заголовки
+    const rows = data.slice(1);
 
-    const response = await fetch("https://api.yookassa.ru/v3/payments", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Idempotence-Key": Math.random().toString(),
-        "Authorization": "Basic " + Buffer.from(
-          process.env.YOOKASSA_SHOP_ID + ":" + process.env.YOOKASSA_SECRET_KEY
-        ).toString("base64")
-      },
-      body: JSON.stringify({
-        amount: {
-          value: amount,
-          currency: "RUB"
-        },
-        confirmation: {
-          type: "redirect",
-          return_url: "https://art-g.art"
-        },
-        capture: true,
-        description: `Подписка ${plan} (${email})`,
+    // 3. Фильтруем активных
+    const activeUsers = rows.filter(row => row[5] === "active");
 
-        receipt: {
-          customer: {
-            email: email
-          },
-          items: [
-            {
-              description: `Подписка ${plan}`,
-              quantity: "1.00",
-              amount: {
-                value: amount,
-                currency: "RUB"
-              },
-              vat_code: 1,
-              payment_mode: "full_prepayment",
-              payment_subject: "service"
-            }
-          ]
-        }
-      })
-    });
+    const results = [];
 
-    const data = await response.json();
+    for (const row of activeUsers) {
+      const email = row[0];
+      const paymentMethodId = row[1];
+      const plan = row[2];
 
-    console.log("YOO RESPONSE:", data);
+      // 👉 временно фикс сумма
+      const amount = "100.00";
 
-    if (data.confirmation && data.confirmation.confirmation_url) {
-      return res.status(200).json({
-        confirmation_url: data.confirmation.confirmation_url
+      const payment = await createPayment(amount, email);
+
+      results.push({
+        email,
+        paymentId: payment.id,
       });
     }
 
-    return res.status(400).json(data);
+    return res.status(200).json({
+      success: true,
+      payments: results,
+    });
 
   } catch (error) {
-    console.error("ERROR:", error);
-    return res.status(500).json({ error: error.message });
+    console.error(error);
+
+    return res.status(500).json({
+      error: error.message,
+    });
   }
 }

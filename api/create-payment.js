@@ -3,8 +3,6 @@ import { google } from "googleapis";
 
 // === Google Sheets ===
 async function getSheetData() {
-  console.log("STEP 1: START GOOGLE");
-
   const auth = new google.auth.GoogleAuth({
     credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
     scopes: ["https://www.googleapis.com/auth/spreadsheets"],
@@ -19,20 +17,13 @@ async function getSheetData() {
     range: "Лист1!A:F",
   });
 
-  console.log("STEP 2: GOOGLE OK");
-
   return response.data.values;
 }
 
 // === YooKassa ===
 async function createPayment(amount, email) {
-  console.log("STEP 3: START PAYMENT");
-
   const shopId = process.env.YOOKASSA_SHOP_ID;
   const secretKey = process.env.YOOKASSA_SECRET_KEY;
-
-  console.log("SHOP_ID:", shopId ? "OK" : "MISSING");
-  console.log("SECRET_KEY:", secretKey ? "OK" : "MISSING");
 
   const auth = Buffer.from(`${shopId}:${secretKey}`).toString("base64");
 
@@ -54,33 +45,53 @@ async function createPayment(amount, email) {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Basic ${auth}`,
+        "Idempotence-Key": `${Date.now()}-${email}`,
       },
     }
   );
-
-  console.log("STEP 4: PAYMENT OK");
 
   return response.data;
 }
 
 // === Handler ===
 export default async function handler(req, res) {
-  console.log("STEP 0: HANDLER START");
+  // CORS
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  if (req.method !== "POST") {
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
+  // 🔥 ВАЖНО: исправленная проверка метода
+  if (req.method.toUpperCase() !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
+    console.log("METHOD:", req.method);
+    console.log("BODY:", req.body);
+
+    // 1. Получаем данные из таблицы
     const data = await getSheetData();
 
+    if (!data || data.length === 0) {
+      return res.status(400).json({ error: "No data in sheet" });
+    }
+
+    // 2. Убираем заголовки
     const rows = data.slice(1);
+
+    // 3. Фильтруем активных
     const activeUsers = rows.filter(row => row[5] === "active");
 
     const results = [];
 
     for (const row of activeUsers) {
       const email = row[0];
+
+      // фикс сумма (потом сделаем динамику)
       const amount = "100.00";
 
       const payment = await createPayment(amount, email);
@@ -88,6 +99,7 @@ export default async function handler(req, res) {
       results.push({
         email,
         paymentId: payment.id,
+        status: payment.status,
       });
     }
 
@@ -97,10 +109,10 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error("ERROR:", error);
+    console.error("FULL ERROR:", error?.response?.data || error.message);
 
     return res.status(500).json({
-      error: error.message,
+      error: error?.response?.data || error.message,
     });
   }
 }

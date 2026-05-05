@@ -1,8 +1,0 @@
-{
-  "name": "yookassa-backend",
-  "version": "1.0.0",
-  "dependencies": {
-    "googleapis": "^126.0.0",
-    "axios": "^1.6.0"
-  }
-}

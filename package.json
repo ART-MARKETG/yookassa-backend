@@ -1,8 +1,8 @@
 {
   "name": "yookassa-backend",
   "version": "1.0.0",
+  "type": "module",
   "dependencies": {
-    "googleapis": "^133.0.0",
-    "axios": "^1.6.0"
+    "uuid": "^9.0.1"
   }
 }

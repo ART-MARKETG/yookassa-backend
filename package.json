@@ -7,6 +7,6 @@
     "@a2seven/yoo-checkout": "^1.0.7"
   },
   "engines": {
-    "node": "18.x"
+    "node": "24.x"
   }
 }

@@ -1,19 +1,31 @@
 import YooCheckout from "@a2seven/yoo-checkout";
 
-const checkout = new YooCheckout({
-  shopId: process.env.YOOKASSA_SHOP_ID,
-  secretKey: process.env.YOOKASSA_SECRET_KEY
-});
-
 export default async function handler(req, res) {
 
-  if (req.method !== "POST") {
-    return res.status(405).json({
-      error: "Method not allowed"
-    });
-  }
-
   try {
+
+    if (req.method !== "POST") {
+      return res.status(405).json({
+        error: "Method not allowed"
+      });
+    }
+
+    if (!process.env.YOOKASSA_SHOP_ID) {
+      return res.status(500).json({
+        error: "NO_SHOP_ID"
+      });
+    }
+
+    if (!process.env.YOOKASSA_SECRET_KEY) {
+      return res.status(500).json({
+        error: "NO_SECRET_KEY"
+      });
+    }
+
+    const checkout = new YooCheckout({
+      shopId: process.env.YOOKASSA_SHOP_ID,
+      secretKey: process.env.YOOKASSA_SECRET_KEY
+    });
 
     const payment = await checkout.createPayment({
       amount: {
@@ -33,16 +45,18 @@ export default async function handler(req, res) {
       capture: true,
       description: "Test payment"
 
-    }, Math.random().toString(36).substring(2, 15));
+    });
 
     return res.status(200).json({
-      confirmation_url: payment.confirmation.confirmation_url
+      success: true,
+      payment
     });
 
   } catch (e) {
 
     return res.status(500).json({
-      error: e.message
+      error: e.message,
+      stack: e.stack
     });
 
   }

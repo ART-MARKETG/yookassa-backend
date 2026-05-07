@@ -4,12 +4,10 @@
   "type": "module",
   "main": "index.js",
   "license": "MIT",
-
   "dependencies": {
-    "@a2seven/yoo-checkout": "^1.0.7"
+    "yookassa": "^3.0.1"
   },
-
-  "engines": {
-    "node": "24.x"
+  "scripts": {
+    "start": "node index.js"
   }
 }

@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "yookassa": "^3.0.1"
+    "axios": "^1.6.8"
   }
 }

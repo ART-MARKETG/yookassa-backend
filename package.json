@@ -2,12 +2,7 @@
   "name": "yookassa-backend",
   "version": "1.0.0",
   "type": "module",
-  "main": "index.js",
-  "license": "MIT",
   "dependencies": {
     "yookassa": "^3.0.1"
-  },
-  "scripts": {
-    "start": "node index.js"
   }
 }

@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "yookassa": "^2.4.0"
+    "yookassa": "3.0.1"
   }
 }

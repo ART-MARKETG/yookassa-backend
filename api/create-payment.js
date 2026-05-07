@@ -1,70 +1,49 @@
-import { v4 as uuidv4 } from "uuid";
+import YooCheckout from "@a2seven/yoo-checkout";
+
+const checkout = new YooCheckout({
+  shopId: process.env.YOOKASSA_SHOP_ID,
+  secretKey: process.env.YOOKASSA_SECRET_KEY
+});
 
 export default async function handler(req, res) {
+
   if (req.method !== "POST") {
     return res.status(405).json({
-      error: "Method not allowed",
+      error: "Method not allowed"
     });
   }
 
   try {
-    const { amount, email } = req.body;
 
-    const response = await fetch("https://api.yookassa.ru/v3/payments", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization:
-          "Basic " +
-          Buffer.from(
-            `${process.env.YOOKASSA_SHOP_ID}:${process.env.YOOKASSA_SECRET_KEY}`
-          ).toString("base64"),
-
-        "Idempotence-Key": uuidv4(),
+    const payment = await checkout.createPayment({
+      amount: {
+        value: "100.00",
+        currency: "RUB"
       },
 
-      body: JSON.stringify({
-        amount: {
-          value: amount,
-          currency: "RUB",
-        },
+      payment_method_data: {
+        type: "bank_card"
+      },
 
-        capture: true,
+      confirmation: {
+        type: "redirect",
+        return_url: "https://google.com"
+      },
 
-        confirmation: {
-          type: "redirect",
-          return_url: "https://google.com",
-        },
+      capture: true,
+      description: "Test payment"
 
-        description: "ART-MARKET subscription",
+    }, Math.random().toString(36).substring(2, 15));
 
-        receipt: {
-          customer: {
-            email,
-          },
-
-          items: [
-            {
-              description: "Подписка",
-              quantity: "1.00",
-              amount: {
-                value: amount,
-                currency: "RUB",
-              },
-
-              vat_code: 1,
-            },
-          ],
-        },
-      }),
+    return res.status(200).json({
+      confirmation_url: payment.confirmation.confirmation_url
     });
 
-    const data = await response.json();
+  } catch (e) {
 
-    return res.status(200).json(data);
-  } catch (error) {
     return res.status(500).json({
-      error: error.message,
+      error: e.message
     });
+
   }
 }

@@ -1,89 +1,79 @@
 export default async function handler(req, res) {
-
+  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "POST, OPTIONS"
+  );
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type"
+  );
 
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
-  try {
+  if (req.method !== "POST") {
+    return res.status(405).json({
+      error: "Method not allowed",
+    });
+  }
 
+  try {
     const body = req.body;
 
     console.log("Webhook:", body);
 
-    // Только успешные оплаты
-    if (body.event !== "payment.succeeded") {
-
-      return res.status(200).json({
-        ignored: true
-      });
-    }
-
+    const event = body.event;
     const payment = body.object;
 
-    const email = payment.metadata.email;
-
-    const plan = payment.metadata.plan;
-
-    const paymentId = payment.id;
-
-    const paymentMethodId =
-      payment.payment_method.id;
-
-    const today =
-      new Date().toISOString().split("T")[0];
-
-    const GOOGLE_SCRIPT_URL =
-      process.env.GOOGLE_SCRIPT_URL;
-
-    // Проверяем дубли
-    const checkResponse = await fetch(
-      `${GOOGLE_SCRIPT_URL}?payment_id=${paymentId}`
-    );
-
-    const checkData =
-      await checkResponse.json();
-
-    // Уже существует
-    if (checkData.exists) {
-
-      console.log("Duplicate payment");
-
-      return res.status(200).json({
-        duplicate: true
-      });
+    // ТОЛЬКО успешная оплата
+    if (event !== "payment.succeeded") {
+      return res.status(200).end();
     }
 
-    // Сохраняем
-    await fetch(GOOGLE_SCRIPT_URL, {
+    const email = payment.metadata.email;
+    const plan = payment.metadata.plan;
+
+    // Отправка в Google Sheets
+    await fetch(process.env.GOOGLE_SCRIPT_URL, {
       method: "POST",
+
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
+
       body: JSON.stringify({
         email,
-        payment_id: paymentId,
-        payment_method_id: paymentMethodId,
+
+        payment_id: payment.id,
+
+        payment_method_id:
+          payment.payment_method?.id || "unknown",
+
         plan,
-        start_date: today,
-        last_payment: today,
-        status: "active"
-      })
+
+        start_date: new Date()
+          .toISOString()
+          .split("T")[0],
+
+        last_payment: new Date()
+          .toISOString()
+          .split("T")[0],
+
+        status: "active",
+      }),
     });
 
     return res.status(200).json({
-      success: true
+      success: true,
     });
-
   } catch (error) {
-
     console.error(error);
 
     return res.status(500).json({
-      error: error.message
+      error: error.message,
     });
   }
 }

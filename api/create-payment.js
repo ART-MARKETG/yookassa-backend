@@ -1,10 +1,36 @@
 export default async function handler(req, res) {
 
+  // CORS
+  res.setHeader(
+    "Access-Control-Allow-Origin",
+    "*"
+  );
+
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "POST, OPTIONS"
+  );
+
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type"
+  );
+
+  // OPTIONS
+  if (req.method === "OPTIONS") {
+
+    return res.status(200).end();
+
+  }
+
+  // Только POST
   if (req.method !== "POST") {
 
     return res.status(405).json({
+
       success: false,
       error: "Method not allowed"
+
     });
 
   }
@@ -23,15 +49,6 @@ export default async function handler(req, res) {
     const secretKey =
       process.env.YOOKASSA_SECRET_KEY;
 
-    if (!shopId || !secretKey) {
-
-      return res.status(500).json({
-        success: false,
-        error: "ENV NOT FOUND"
-      });
-
-    }
-
     const auth = Buffer
       .from(`${shopId}:${secretKey}`)
       .toString("base64");
@@ -42,29 +59,41 @@ export default async function handler(req, res) {
     const paymentData = {
 
       amount: {
-        value: Number(amount).toFixed(2),
+
+        value:
+          Number(amount).toFixed(2),
+
         currency: "RUB"
+
       },
 
       capture: true,
 
       confirmation: {
+
         type: "redirect",
-        return_url: "https://art-g.art"
+
+        return_url:
+          "https://art-g.art"
+
       },
 
       description:
         `Подписка ${plan}`,
 
       metadata: {
+
         email: email,
         plan: plan
+
       },
 
       receipt: {
 
         customer: {
+
           email: email
+
         },
 
         items: [
@@ -77,9 +106,12 @@ export default async function handler(req, res) {
             quantity: "1.00",
 
             amount: {
+
               value:
                 Number(amount).toFixed(2),
+
               currency: "RUB"
+
             },
 
             vat_code: 1,
@@ -97,9 +129,6 @@ export default async function handler(req, res) {
       }
 
     };
-
-    console.log("SEND:");
-    console.log(paymentData);
 
     const response = await fetch(
       "https://api.yookassa.ru/v3/payments",
@@ -130,7 +159,6 @@ export default async function handler(req, res) {
     const payment =
       await response.json();
 
-    console.log("YOOKASSA:");
     console.log(payment);
 
     if (!response.ok) {
@@ -156,7 +184,6 @@ export default async function handler(req, res) {
 
   } catch (e) {
 
-    console.log("SERVER ERROR:");
     console.log(e);
 
     return res.status(500).json({

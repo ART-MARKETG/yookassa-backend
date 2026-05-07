@@ -2,6 +2,11 @@
   "name": "yookassa-backend",
   "private": true,
   "type": "module",
+
+  "engines": {
+    "node": "20.x"
+  },
+
   "dependencies": {
     "yookassa": "^2.5.0"
   }

@@ -1,79 +1,75 @@
+import axios from "axios";
+
 export default async function handler(req, res) {
-  // CORS
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "POST, OPTIONS"
-  );
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Content-Type"
-  );
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
-  if (req.method !== "POST") {
-    return res.status(405).json({
-      error: "Method not allowed",
-    });
-  }
 
   try {
+
     const body = req.body;
 
-    console.log("Webhook:", body);
+    console.log("WEBHOOK:", body);
 
-    const event = body.event;
-    const payment = body.object;
-
-    // ТОЛЬКО успешная оплата
-    if (event !== "payment.succeeded") {
+    if (body.event !== "payment.succeeded") {
       return res.status(200).end();
     }
 
-    const email = payment.metadata.email;
-    const plan = payment.metadata.plan;
+    const payment = body.object;
 
-    // Отправка в Google Sheets
-    await fetch(process.env.GOOGLE_SCRIPT_URL, {
-      method: "POST",
+    const email =
+      payment.metadata?.email || "";
 
-      headers: {
-        "Content-Type": "application/json",
-      },
+    const plan =
+      payment.metadata?.plan || "";
 
-      body: JSON.stringify({
+    const paymentId =
+      payment.id;
+
+    const paymentMethodId =
+      payment.payment_method?.id || "";
+
+    const today =
+      new Date()
+        .toISOString()
+        .split("T")[0];
+
+    // Проверка дублей
+    const checkResponse =
+      await axios.get(
+        `${process.env.GOOGLE_SCRIPT_URL}?payment_id=${paymentId}`
+      );
+
+    if (checkResponse.data.exists) {
+
+      console.log("Duplicate payment");
+
+      return res.status(200).json({
+        duplicate: true
+      });
+    }
+
+    // Запись в таблицу
+    await axios.post(
+      process.env.GOOGLE_SCRIPT_URL,
+      {
         email,
-
-        payment_id: payment.id,
-
-        payment_method_id:
-          payment.payment_method?.id || "unknown",
-
+        payment_id: paymentId,
+        payment_method_id: paymentMethodId,
         plan,
-
-        start_date: new Date()
-          .toISOString()
-          .split("T")[0],
-
-        last_payment: new Date()
-          .toISOString()
-          .split("T")[0],
-
-        status: "active",
-      }),
-    });
+        start_date: today,
+        last_payment: today,
+        status: "active"
+      }
+    );
 
     return res.status(200).json({
-      success: true,
+      success: true
     });
+
   } catch (error) {
-    console.error(error);
+
+    console.log(error.message);
 
     return res.status(500).json({
-      error: error.message,
+      error: error.message
     });
   }
 }

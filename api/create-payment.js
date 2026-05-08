@@ -1,26 +1,6 @@
-import YooKassa from "yookassa";
-
-const yooKassa = new YooKassa({
-  shopId: process.env.YOOKASSA_SHOP_ID,
-  secretKey: process.env.YOOKASSA_SECRET_KEY,
-});
+import axios from "axios";
 
 export default async function handler(req, res) {
-  // CORS
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "POST, OPTIONS"
-  );
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Content-Type"
-  );
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
   if (req.method !== "POST") {
     return res.status(405).json({
       error: "Method not allowed",
@@ -28,18 +8,17 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { email, plan } = req.body;
+    const { email, amount, plan } = req.body;
 
-    const prices = {
-      base: "10.00",
-    };
+    const shopId = process.env.YOOKASSA_SHOP_ID;
+    const secretKey = process.env.YOOKASSA_SECRET_KEY;
 
-    const amount = prices[plan] || "10.00";
+    const auth = Buffer.from(
+      `${shopId}:${secretKey}`
+    ).toString("base64");
 
-    const idempotenceKey =
-      Math.random().toString(36).substring(2, 15);
-
-    const payment = await yooKassa.createPayment(
+    const payment = await axios.post(
+      "https://api.yookassa.ru/v3/payments",
       {
         amount: {
           value: amount,
@@ -50,30 +29,34 @@ export default async function handler(req, res) {
 
         confirmation: {
           type: "redirect",
-          return_url: "https://art-g.art/success",
+          return_url: "https://art-g.art/",
         },
 
         description: `Подписка ${plan}`,
-
-        save_payment_method: true,
 
         metadata: {
           email,
           plan,
         },
       },
-      idempotenceKey
+      {
+        headers: {
+          Authorization: `Basic ${auth}`,
+          "Idempotence-Key": Date.now().toString(),
+          "Content-Type": "application/json",
+        },
+      }
     );
 
     return res.status(200).json({
       confirmation_url:
-        payment.confirmation.confirmation_url,
+        payment.data.confirmation.confirmation_url,
     });
   } catch (error) {
-    console.error(error);
+    console.log(error.response?.data || error.message);
 
     return res.status(500).json({
-      error: error.message,
+      error: "Payment failed",
     });
   }
 }

@@ -1,75 +1,70 @@
-import axios from "axios";
+import fetch from "node-fetch";
 
 export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(200).json({ message: "ok" });
+  }
 
   try {
+    const event = req.body;
 
-    const body = req.body;
+    console.log("Webhook:", event);
 
-    console.log("WEBHOOK:", body);
+    // Только успешная оплата
+    if (
+      event.event === "payment.succeeded" &&
+      event.object?.status === "succeeded"
+    ) {
+      const payment = event.object;
 
-    if (body.event !== "payment.succeeded") {
-      return res.status(200).end();
-    }
+      const metadata = payment.metadata || {};
 
-    const payment = body.object;
+      const email = metadata.email || "";
+      const plan = metadata.plan || "";
+      const paymentId = payment.id || "";
 
-    const email =
-      payment.metadata?.email || "";
+      // payment_method_id
+      let paymentMethodId = "";
 
-    const plan =
-      payment.metadata?.plan || "";
-
-    const paymentId =
-      payment.id;
-
-    const paymentMethodId =
-      payment.payment_method?.id || "";
-
-    const today =
-      new Date()
-        .toISOString()
-        .split("T")[0];
-
-    // Проверка дублей
-    const checkResponse =
-      await axios.get(
-        `${process.env.GOOGLE_SCRIPT_URL}?payment_id=${paymentId}`
-      );
-
-    if (checkResponse.data.exists) {
-
-      console.log("Duplicate payment");
-
-      return res.status(200).json({
-        duplicate: true
-      });
-    }
-
-    // Запись в таблицу
-    await axios.post(
-      process.env.GOOGLE_SCRIPT_URL,
-      {
-        email,
-        payment_id: paymentId,
-        payment_method_id: paymentMethodId,
-        plan,
-        start_date: today,
-        last_payment: today,
-        status: "active"
+      if (payment.payment_method?.id) {
+        paymentMethodId = payment.payment_method.id;
       }
-    );
+
+      // URL из Vercel ENV
+      const GOOGLE_SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL;
+
+      if (!GOOGLE_SCRIPT_URL) {
+        throw new Error("GOOGLE_SCRIPT_URL not found");
+      }
+
+      // Отправка в Google Sheets
+      const response = await fetch(GOOGLE_SCRIPT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          plan,
+          payment_id: paymentId,
+          payment_method_id: paymentMethodId,
+          status: "active",
+        }),
+      });
+
+      const text = await response.text();
+
+      console.log("Sheets response:", text);
+    }
 
     return res.status(200).json({
-      success: true
+      success: true,
     });
-
   } catch (error) {
-
-    console.log(error.message);
+    console.error("Webhook error:", error);
 
     return res.status(500).json({
-      error: error.message
+      error: error.message,
     });
   }
 }

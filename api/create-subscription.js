@@ -45,7 +45,9 @@ export default async function handler(req, res) {
         description: "Подписка ART G",
 
         metadata: {
-          type: "subscription"
+          type: "subscription",
+          email: req.body.email || "",
+          plan: req.body.plan || "monthly"
         }
       },
       {

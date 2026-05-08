@@ -22,7 +22,7 @@ export default async function handler(req, res) {
 
       {
         amount: {
-          value: "100.00",
+          value: "99.00",
           currency: "RUB"
         },
 
@@ -33,9 +33,9 @@ export default async function handler(req, res) {
           return_url: "https://google.com"
         },
 
-        save_payment_method: true,
+        description: "Подписка ART-G",
 
-        description: "Подписка ART-G"
+        save_payment_method: true
       },
 
       {
@@ -47,10 +47,7 @@ export default async function handler(req, res) {
       }
     );
 
-    return res.status(200).json({
-      confirmation_url:
-        response.data.confirmation.confirmation_url
-    });
+    return res.status(200).json(response.data);
 
   } catch (error) {
 
@@ -59,7 +56,7 @@ export default async function handler(req, res) {
     );
 
     return res.status(500).json({
-      error: "Create payment failed"
+      error: "Subscription failed"
     });
   }
 }

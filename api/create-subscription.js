@@ -2,6 +2,17 @@ import axios from "axios";
 
 export default async function handler(req, res) {
 
+  // CORS
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  // preflight
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
+  // only POST
   if (req.method !== "POST") {
     return res.status(405).json({
       error: "Method not allowed"
@@ -17,12 +28,10 @@ export default async function handler(req, res) {
       .toString("base64");
 
     const response = await axios.post(
-
       "https://api.yookassa.ru/v3/payments",
-
       {
         amount: {
-          value: "99.00",
+          value: "990.00",
           currency: "RUB"
         },
 
@@ -33,11 +42,12 @@ export default async function handler(req, res) {
           return_url: "https://google.com"
         },
 
-        description: "Подписка ART-G",
+        description: "Подписка ART G",
 
-        save_payment_method: true
+        metadata: {
+          type: "subscription"
+        }
       },
-
       {
         headers: {
           Authorization: `Basic ${auth}`,
@@ -47,16 +57,19 @@ export default async function handler(req, res) {
       }
     );
 
-    return res.status(200).json(response.data);
+    return res.status(200).json({
+      confirmation_url: response.data.confirmation.confirmation_url
+    });
 
   } catch (error) {
 
-    console.log(
+    console.error(
       error.response?.data || error.message
     );
 
     return res.status(500).json({
-      error: "Subscription failed"
+      error: error.response?.data || error.message
     });
+
   }
 }
